@@ -17,13 +17,17 @@
 примеры запросов
 
 1. Запрос без конвертирования названия столбцов
+
    java -jar ./tsv-downloader-1.0.1-SNAPSHOT.jar --convert-columns-enable=false
 
 2. Запрос с удалением столбца name
+
    java -jar ./tsv-downloader-1.0.1-SNAPSHOT.jar --delete-columns=name
    
 3. Запрос на выгрузку данных из таблицы test_table2
+
    java -jar ./tsv-downloader-1.0.1-SNAPSHOT.jar --table_name=test_table2
 
 4. Запрос с выгрузкой данных и изменением названия столбца 'name' на 'HELLO_WORLD'
+
    java -jar ./tsv-downloader-1.0.1-SNAPSHOT.jar --convert-columns={name:'HELLO_WORLD'}
