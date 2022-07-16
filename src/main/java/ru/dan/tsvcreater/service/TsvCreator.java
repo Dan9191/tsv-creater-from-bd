@@ -2,6 +2,7 @@ package ru.dan.tsvcreater.service;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.java.Log;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.model.ZipParameters;
 import org.apache.commons.io.FileUtils;
@@ -44,6 +45,11 @@ public class TsvCreator {
     private File tempDir;
 
     /**
+     * Требуется ли архивировать файл по достижению указанного размера.
+     */
+    private boolean zipArchiveEnable;
+
+    /**
      * Размер для архивирования.
      */
     private DataSize zipSize;
@@ -72,6 +78,7 @@ public class TsvCreator {
     public TsvCreator(TableReaderRepository tableReaderRepository,
                       @Value("${table-name}") String tableName,
                       @Value("${temp-directory}") File tempDir,
+                      @Value("${zip-archive-enable}") boolean zipArchiveEnable,
                       @Value("${zip-size}") DataSize zipSize,
                       @Value("${delete-columns-enable}") boolean deleteColumnsEnable,
                       @Value("${delete-columns}") List<String> deletedColumns,
@@ -80,6 +87,7 @@ public class TsvCreator {
         this.tableReaderRepository = tableReaderRepository;
         this.tableName = tableName;
         this.tempDir = tempDir;
+        this.zipArchiveEnable = zipArchiveEnable;
         this.zipSize = zipSize;
         this.deleteColumnsEnable = deleteColumnsEnable;
         this.deletedColumns = deletedColumns;
@@ -104,7 +112,7 @@ public class TsvCreator {
             });
             fos.flush();
 
-            if (DataSize.ofBytes(FileUtils.sizeOf(tsvFile)).compareTo(zipSize) > 0) {
+            if (zipArchiveEnable && FileUtils.sizeOf(tsvFile) >= zipSize.toBytes()) {
                 File zip = new File(tempDir, String.format("%s.zip", tableName));
                 ZipParameters zipParameters = new ZipParameters();
                 ZipFile zipArchiver = new ZipFile(zip);
