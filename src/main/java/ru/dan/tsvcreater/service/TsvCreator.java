@@ -2,7 +2,6 @@ package ru.dan.tsvcreater.service;
 
 import lombok.Getter;
 import lombok.Setter;
-import lombok.extern.java.Log;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.model.ZipParameters;
 import org.apache.commons.io.FileUtils;
