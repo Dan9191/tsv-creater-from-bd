@@ -12,8 +12,11 @@ import org.springframework.util.unit.DataSize;
 import ru.dan.tsvcreater.repository.TableReaderRepository;
 
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -100,7 +103,8 @@ public class TsvCreator {
     public void createTsvFile() {
         String fileName = String.format("%s.tsv", tableName);
         File tsvFile = new File(tempDir, fileName);
-        try (FileWriter fos = new FileWriter(tsvFile)) {
+        try (FileOutputStream fileOutputStream = new FileOutputStream(tsvFile);
+             Writer fos = new OutputStreamWriter(fileOutputStream, StandardCharsets.UTF_8)) {
             List<String> data = getData();
             data.forEach(row -> {
                 try {
