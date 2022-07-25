@@ -1,15 +1,18 @@
-package ru.dan.tsvcreater.service;
+package ru.ern.tsvdownloader.service;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import net.lingala.zip4j.ZipFile;
+import net.lingala.zip4j.exception.ZipException;
 import net.lingala.zip4j.model.ZipParameters;
 import org.apache.commons.io.FileUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
-import ru.dan.tsvcreater.repository.TableReaderRepository;
+import ru.dan.tsvcreater.model.ColumnModel;
+import ru.ern.tsvdownloader.repository.TableReaderRepository;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -29,6 +32,7 @@ import java.util.stream.Collectors;
 @Component
 @Getter
 @Setter
+@Slf4j
 public class TsvCreator {
 
     /**
@@ -114,21 +118,24 @@ public class TsvCreator {
                 }
             });
             fos.flush();
-
-            if (zipArchiveEnable && FileUtils.sizeOf(tsvFile) >= zipSize.toBytes()) {
-                File zip = new File(tempDir, String.format("%s.zip", tableName));
-                ZipParameters zipParameters = new ZipParameters();
-                ZipFile zipArchiver = new ZipFile(zip);
-                zipParameters.setFileNameInZip(fileName);
-                zipArchiver.addFile(tsvFile);
-                FileUtils.deleteQuietly(tsvFile);
-            }
         } catch (Exception e) {
             FileUtils.deleteQuietly(tsvFile);
-            e.printStackTrace(System.err);
+            log.error(e.getMessage());
         }
 
-
+        if (zipArchiveEnable && FileUtils.sizeOf(tsvFile) >= zipSize.toBytes()) {
+            File zip = new File(tempDir, String.format("%s.zip", tableName));
+            ZipParameters zipParameters = new ZipParameters();
+            ZipFile zipArchiver = new ZipFile(zip);
+            zipParameters.setFileNameInZip(fileName);
+            try {
+                zipArchiver.addFile(tsvFile);
+            } catch (ZipException e) {
+                log.error(e.getMessage());
+            } finally {
+                FileUtils.deleteQuietly(tsvFile);
+            }
+        }
     }
 
     /**
@@ -138,10 +145,11 @@ public class TsvCreator {
      */
     public List<String> getData() {
         List<String> result = new ArrayList<>();
-        List<String> columns;
+        List<ColumnModel> columns;
+        log.info("Deleted columns is enable: '{}', delete columns '{}'", deleteColumnsEnable, deletedColumns);
         if (deleteColumnsEnable) {
             columns = tableReaderRepository.getColumns(tableName).stream()
-                    .filter(column -> !deletedColumns.contains(column))
+                    .filter(column -> !deletedColumns.contains(column.getName()))
                     .collect(Collectors.toList());
         } else {
             columns = tableReaderRepository.getColumns(tableName);
@@ -149,26 +157,28 @@ public class TsvCreator {
         List<String> values = tableReaderRepository.getValues(columns, tableName).stream()
                 .map(map -> {
                     List<String> rowValues = new ArrayList<>();
-                    for (String column : columns) {
-                        rowValues.add(map.get(column));
+                    for (ColumnModel column : columns) {
+                        rowValues.add(map.get(column.getName()));
                     }
                     return rowValues;
                 })
                 .map(list -> String.join("\t", list).concat("\n"))
                 .collect(Collectors.toList());
 
+        log.info("Convert columns is enable: '{}', convert columns '{}'", convertColumnsEnable, covertColumns);
         if (convertColumnsEnable) {
             Set<String> convertedColumnsSet = covertColumns.keySet();
             result.add(columns.stream()
-                               .map(column -> {
-                                   if (convertedColumnsSet.contains(column)) {
-                                       return covertColumns.get(column);
-                                   }
-                                   return column;
-                               })
-                               .collect(Collectors.joining("\t")).concat("\n"));
+                    .map(ColumnModel::getName)
+                    .map(column -> {
+                        if (convertedColumnsSet.contains(column)) {
+                            return covertColumns.get(column);
+                        }
+                        return column;
+                    })
+                    .collect(Collectors.joining("\t")).concat("\n"));
         } else {
-            result.add(String.join("\t", columns).concat("\n"));
+            result.add(columns.stream().map(ColumnModel::getName).collect(Collectors.joining("\t")).concat("\n"));
         }
         result.addAll(values);
         return result;
